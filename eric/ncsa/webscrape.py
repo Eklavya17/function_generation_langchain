@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 import openai
 import json
 BASE_URL = 'https://docs.astropy.org/en/stable/'
-
+print("START")
 class Node:
     def __init__(self, url):
         self.url = url
@@ -62,36 +62,34 @@ def chunk_text(text, length=2000, overlap=500):
         chunks.append(' '.join(words[i:i+length]))
     return chunks
 
-with open('/Users/eric/Desktop/more/ncsa/api_key.txt', 'r') as f:
+with open('./eric/ncsa/api_key.txt', 'r') as f:
     openai.api_key = f.read().strip()
 
 def extract_functions_from_chunk(chunk):
     try:
-        prompt = (f"Given the content below, extract and list all identifiable "
-                  f"programming constructs such as functions, methods, classes, modules, "
-                  f"and constants. Please provide the output in a structured JSONL format.\n\n{chunk}")
-        
+        prompt = (f"Given the content below from the `astropy` package documentation, "
+                  f"identify entries that are associated with specific `astropy` modules. "
+                  f"We are looking for entries in the format 'Function/Feature Name (astropy.something)'. "
+                  f"Each matched entry should be on a new line. Begin the list with 'Function Names:' "
+                  f"and then list each entry on a new line.\n\n{chunk}")
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=500 
+            max_tokens=500,
+            temperature=0.3
         )
-        
-        response_text = response.choices[0].message.content.strip()
-        jsonl_lines = response_text.split("\n")
-        valid_jsonl_objects = []
-        for line in jsonl_lines:
-            try:
-                json_obj = json.loads(line)
-                valid_jsonl_objects.append(json_obj)
-            except json.JSONDecodeError:
-                pass
 
-        return valid_jsonl_objects
-    
+        response_text = response.choices[0].message.content.strip()
+
+        if "Function Names:" in response_text:
+            functions_list = response_text.split("Function Names:")[1].strip().split("\n")
+        else:
+            functions_list = []
+
+        return functions_list
+
     except openai.error.OpenAIError:
         return []
-
 tree = build_tree(BASE_URL)
 
 def extract_links(node):
@@ -106,8 +104,10 @@ links = extract_links(tree)
 
 data = []
 count=0
+print(len(links))
 for link in links:
     print(count)
+    print(link)
     count+=1
     try:
         response = requests.get(link)
@@ -120,10 +120,12 @@ for link in links:
         text = soup.get_text()
         
         chunks = chunk_text(text)
-        
+        print(len(chunks))
         for chunk in chunks:
             descriptions = extract_functions_from_chunk(chunk)
+            print(descriptions)
             if descriptions:
+                print(descriptions)
                 data.append({
                     "link": link,
                     "chunk": chunk,
