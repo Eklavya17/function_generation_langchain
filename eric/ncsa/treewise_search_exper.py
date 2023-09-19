@@ -31,13 +31,15 @@ def recursive_search(data_dict, query, path=[]):
         return path
 
     # Get only dictionary keys since we can't search None values with the embeddings
-    keys = [key for key, value in data_dict.items() if isinstance(value, dict)]
+    keys = [key for key, value in data_dict.items()]
 
     # If no more dictionary keys, return the current path
     if not keys:
         return path
 
     # Use find_most_similar to get the most similar key
+    print("choices:")
+    print(keys)
     _, best_match_key = find_most_similar(query, keys, [model.encode(key, convert_to_tensor=True) for key in keys])
 
     # Recursively search within the best match key's sub-dictionary
@@ -45,9 +47,6 @@ def recursive_search(data_dict, query, path=[]):
 import json
 with open('./hierarchy.json', 'r') as file:
     data = json.load(file)
-print(data)
 def search_data(data_dict, query):
     path = recursive_search(data_dict, query)
     return path
-
-print(search_data(data,"minutes"))
